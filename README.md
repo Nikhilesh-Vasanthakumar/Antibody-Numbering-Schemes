@@ -571,5 +571,5 @@ function applyAhoNumbering(annotations, sequence, chainType) {
 export { applyAhoNumbering };
 ```
 ## Conclusion
-
-In conclusion, this study explored the role of plasmacytoid dendritic cells (pDCs) in the context of Pseudomonas infection and investigated potential sex differences in pDC function and gene expression. The findings revealed distinct gene expression patterns and pathway activations between males and females at different timepoints during Pseudomonas treatment. Additionally, the study highlighted the integral role of pDCs in antitumor immune responses, autoimmune responses, and their potential as therapeutic targets. Further investigations into sex differences and the involvement of pDCs in infectious diseases and autoimmune disorders, such as lupus, can provide valuable insights for understanding immune responses and developing targeted therapies.
+In conclusion, this project successfully developed and integrated a Hidden Markov Model (HMM)-based numbering system for VH and VL sequences into Bionamic’s existing software application.
+By utilising the probabilistic modeling capabilities of HMMs, the tool effectively handles the inherent variability in antibody sequences, providing a robust and automated solution for the alignment and numbering of these sequences according to established numbering schemes.

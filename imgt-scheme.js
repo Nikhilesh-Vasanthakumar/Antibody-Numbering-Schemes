@@ -1,112 +1,48 @@
+import { parseAlignment } from "./alignment-states.js";
+import { NumberingError, numberRegions, symmetricCdr, toResult } from "./numbering-core.js";
+
+// IMGT region definitions. HMM match states are IMGT positions, so these regions
+// are used directly. In the CDRs, gaps and insertions are placed symmetrically
+// around the centre positions (insertionPos): 111.1, 111.2 ... and ... 112.2, 112.1
+// in IMGT notation, returned here as "111A", "111B" ... "112B", "112A".
+const regions = [
+	{ start: 1, end: 26, insertionPos: null }, // FR1
+	{ start: 27, end: 38, insertionPos: [32, 33] }, // CDR1
+	{ start: 39, end: 55, insertionPos: null }, // FR2
+	{ start: 56, end: 65, insertionPos: [60, 61] }, // CDR2
+	{ start: 66, end: 104, insertionPos: null }, // FR3
+	{ start: 105, end: 117, insertionPos: [111, 112] }, // CDR3
+	{ start: 118, end: 128, insertionPos: null }, // FR4
+];
+
+const stateString = "X".repeat(128); // every IMGT state is an IMGT position
+const regionString = regions.map((r, i) => String(i + 1).repeat(r.end - r.start + 1)).join("");
+const regionIndex = Object.fromEntries(regions.map((_, i) => [String(i + 1), i]));
+const rels = Object.fromEntries(regions.map((_, i) => [i, 0]));
+const cdrRegions = [1, 3, 5];
+
+/** Renumber a CDR symmetrically between its region start and end. */
+function renumberCdr(region, { start, end }) {
+	const positions = symmetricCdr(region.length, end - start + 1, start, end + 1).filter((a) => a !== null);
+	return region.map(([, aa], i) => [positions[i], aa]);
+}
+
 /**
- * @param {string} annotations - A string where 'x' denotes a countable position
- * @param {string} sequence - The amino acid sequence to be numbered.
- * @returns {{ concatSequence: string, numbering: number[] }} - Returns both the sequence and their corresponding imgt numbering.
+ * Applies IMGT numbering to an amino acid sequence based on Stockholm annotations.
+ *
+ * @param {string} annotations - The `#=GC RF` line: 'x' denotes a countable position (IMGT HMM state), '.' an insert column.
+ * @param {string} sequence - The aligned sequence row: uppercase = match, lowercase = insertion, '-' or '.' = gap.
+ * @returns {{ concatSequence: string, numbering: (number|string)[] }} - Returns both the sequence and their
+ *   corresponding IMGT numbering, one entry per residue (e.g. 110, 111, "111A", "112A", 112).
  */
 function applyImgtNumbering(annotations, sequence) {
-	let imgtLength = Math.min(annotations.length, sequence.length);
-	let sequenceIndex = 0;
-	let imgtNumber = 1;
-	let annotatedSequence = "";
-	let numbering = [];
-
-	for (let i = 0; i < imgtLength; i++) {
-		if (annotations[i] === "x" || annotations[i] === ".") {
-			if (sequence[sequenceIndex] !== "-") {
-				annotatedSequence += sequence[sequenceIndex];
-				if (
-					annotations[i + 1] === "." &&
-					(imgtNumber < 111 || imgtNumber > 117)
-				) {
-					numbering.push(imgtNumber);
-					console.log("general loop", imgtNumber);
-					let insertionCounter = 1;
-					sequenceIndex++;
-					i++;
-					while (annotations[i] === "." && sequenceIndex <= sequence.length) {
-						annotatedSequence += sequence[sequenceIndex];
-						numbering.push(imgtNumber + 0.1 * insertionCounter);
-						console.log(imgtNumber + 0.1 * insertionCounter);
-						insertionCounter++;
-						sequenceIndex++;
-						i++;
-					}
-					imgtNumber++;
-				} else if (
-					imgtNumber >= 111 &&
-					imgtNumber <= 117 &&
-					annotations[i + 1] === "."
-				) {
-					if (annotations[i + 1] === ".") {
-						numbering.push(imgtNumber);
-						console.log("specific loop", imgtNumber);
-						let insertions = [];
-						while (i < imgtLength && annotations[i + 1] === ".") {
-							insertions.push(sequence[i]);
-							i++;
-						}
-						console.log("insertions", insertions);
-						if (insertions.length % 2 === 0) {
-							let temp = imgtNumber;
-							for (let j = 0; j < insertions.length / 2; j++) {
-								numbering.push(Number((temp + 0.1).toFixed(1)));
-								temp = Number((temp + 0.1).toFixed(1));
-								console.log("specific loop even", imgtNumber + 0.1);
-							}
-							imgtNumber++;
-							for (let j = insertions.length / 2; j < insertions.length; j++) {
-								let forwardcounter = insertions.length - j;
-								numbering.push(imgtNumber + 0.1 * forwardcounter);
-							}
-						} else if (insertions.length % 2 === 1) {
-							console.log("specific loop insert", imgtNumber);
-							console.log(Number.isInteger(imgtNumber));
-							let temp = imgtNumber;
-							for (let j = 0; j < Math.floor(insertions.length / 2) + 1; j++) {
-								numbering.push(Number((temp + 0.1).toFixed(1)));
-								temp = Number((temp + 0.1).toFixed(1));
-								console.log("temp", temp);
-							}
-							imgtNumber++;
-							for (
-								let j = Math.floor(insertions.length / 2) + 1;
-								j < insertions.length;
-								j++
-							) {
-								let reversecounter = insertions.length - j;
-								console.log("reversecounter", reversecounter);
-								numbering.push(imgtNumber + 0.1 * reversecounter);
-							}
-						}
-					}
-					imgtNumber++;
-				}
-			}
-			numbering.push(imgtNumber);
-			imgtNumber++;
-		} else {
-			annotatedSequence += ".";
-			imgtNumber++;
-		}
-		sequenceIndex++;
-	}
-	let concatSequence = "";
-	for (const seqchar of annotatedSequence) {
-		if (seqchar === "." || seqchar === "-") {
-			continue;
-		} else {
-			concatSequence += seqchar;
-		}
-	}
-	return { concatSequence, numbering };
+	const { residues, states } = parseAlignment(annotations, sequence);
+	const { regions: numbered } = numberRegions(residues, states, stateString, regionString, regionIndex, rels, regions.length, cdrRegions);
+	// 13 positions + insertions on 111 and 112 (up to "ZZ" each) cover any realistic CDR3.
+	if (numbered[5].length > 117) throw new NumberingError("CDR3 too long for IMGT numbering");
+	return toResult(
+		numbered.flatMap((region, i) => (cdrRegions.includes(i) ? renumberCdr(region, regions[i]) : region)),
+	);
 }
 
 export { applyImgtNumbering };
-
-//Maybe we can use different functions for different numbering positions
-//CDR1
-//CDR1 has a range from 27 (inc.) to 39 (exc.) and has a theoretical maximum length of 12.
-//CDR2
-//CDR2 has a range from 56 (inc.) to 66 (exc.) and has a theoretical length of 10.
-//CDR3
-//CDR3 has a range from 105 (inc.) to 118 (exc.). Insertions are placed on 112 and 111 symetrically.

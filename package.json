@@ -1,0 +1,20 @@
+{
+  "name": "antibody-numbering-schemes",
+  "version": "2.0.0",
+  "description": "IMGT, Kabat, Chothia and AHo numbering of antibody variable domains from IMGT-HMM Stockholm alignments",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./imgt": "./imgt-scheme.js",
+    "./kabat": "./kabat-scheme.js",
+    "./chothia": "./chothia-scheme.js",
+    "./aho": "./aho-scheme.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

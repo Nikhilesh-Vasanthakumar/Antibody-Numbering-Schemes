@@ -121,3 +121,8 @@ antibodies. In particular:
 Version 2 maps the alignment onto each scheme with per-region tables and applies each
 scheme's CDR rules. It keeps the same function names, inputs and `{ concatSequence, numbering }`
 output.
+
+## Acknowledgements
+
+* Scheme rules follow [ANARCI](https://github.com/oxpig/ANARCI) (BSD 3-Clause), and the germline data come from [IMGT](https://www.imgt.org).
+* [Claude Code](https://claude.com/claude-code) was used to add test cases and verify the output.

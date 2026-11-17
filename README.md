@@ -121,8 +121,3 @@ antibodies. In particular:
 Version 2 maps the alignment onto each scheme with per-region tables and applies each
 scheme's CDR rules. It keeps the same function names, inputs and `{ concatSequence, numbering }`
 output.
-
-## Acknowledgements
-
-The scheme conversion rules follow ANARCI (Dunbar & Deane 2016, BSD 3-Clause, see
-`THIRD_PARTY_NOTICES.md`), and the germline data come from IMGT.
